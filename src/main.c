@@ -5,11 +5,14 @@
 #include <time.h>
 #include <strings.h>
 #define SCREEN_WIDTH 1800
-#define SCREEN_HEIGHT 1800
+#define SCREEN_HEIGHT 1000
 #define RADIUS 1
 #define AMOUNT 10000
+#define VELOCITYFACTOR 0.05
+#define ACCERATIONFACTOR 1
+#define MAXSIZE 1
+#define MINDISTANCE 2
 #define FORCEDISTANCE RADIUS*40
-#define VELOCITYFACTOR 0.05;
 
 typedef struct {
     float x;
@@ -29,7 +32,7 @@ void DrawParticle(Particle p) {
 }
 
 Particle InitParticle(Color colour) {
-    Particle p = {(float)(rand() % SCREEN_WIDTH),(float)(rand() % SCREEN_HEIGHT),0,0,(rand() % 3) + 1,colour};
+    Particle p = {(float)(rand() % SCREEN_WIDTH),(float)(rand() % SCREEN_HEIGHT),0,0,(rand() % MAXSIZE) + 1,colour};
     return p;
 }
 
@@ -62,18 +65,24 @@ void rule(Particle* p1, int amountOfP1, Particle* p2, int amountOfP2, float g) {
             float dy = particle1.y - particle2.y;
             float distance = (float)sqrt(dx*dx + dy*dy);
 
-            if (distance > 0 && distance < FORCEDISTANCE) {
+
+            if (distance > MINDISTANCE && distance < FORCEDISTANCE) {
                 //float F = g*1/pow(distance,2);
                 float F = g*particle1.mass*particle2.mass/distance;
+                if (distance <= MINDISTANCE) {
+                    F = -1*particle1.mass*particle2.mass/distance;
+                }
+
                 fx += F * dx;
                 fy += F * dy;
             }
+
         }
 
         Particle particleCopy = {particle1.x,particle1.y,particle1.xv,particle1.yv,particle1.mass,particle1.colour};
 
-        particleCopy.xv += fx;
-        particleCopy.yv += fy;
+        particleCopy.xv += fx*ACCERATIONFACTOR;
+        particleCopy.yv += fy*ACCERATIONFACTOR;
         particleCopy.x += particleCopy.xv*VELOCITYFACTOR;
         particleCopy.y += particleCopy.yv*VELOCITYFACTOR;
 
@@ -111,10 +120,10 @@ int main()
     int indexBLUE = 0;
     int indexGREEN = 0;
 
-    indexRED = createGroup(1000,RED,ParticlesRED,indexRED);
-    indexWHITE = createGroup(1000,WHITE,ParticlesWHITE,indexWHITE);
-    indexBLUE = createGroup(1000,BLUE,ParticlesBLUE,indexBLUE);
-    indexGREEN = createGroup(1000,GREEN,ParticlesGREEN,indexGREEN);
+    indexRED = createGroup(400,RED,ParticlesRED,indexRED);
+    indexWHITE = createGroup(400,WHITE,ParticlesWHITE,indexWHITE);
+    indexBLUE = createGroup(400,BLUE,ParticlesBLUE,indexBLUE);
+    indexGREEN = createGroup(400,GREEN,ParticlesGREEN,indexGREEN);
 
 
     /* make rules */
