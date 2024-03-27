@@ -4,14 +4,14 @@
 #include <math.h>
 #include <time.h>
 #include <strings.h>
-#define SCREEN_WIDTH 1800
-#define SCREEN_HEIGHT 1000
+#define SCREEN_WIDTH 1920
+#define SCREEN_HEIGHT 1080
 #define RADIUS 1
 #define AMOUNT 10000
-#define VELOCITYFACTOR 0.05
+#define VELOCITYFACTOR 0.008
 #define ACCERATIONFACTOR 1
 #define MAXSIZE 1
-#define MINDISTANCE 2
+#define MINDISTANCE 0.6
 #define FORCEDISTANCE RADIUS*40
 
 typedef struct {
@@ -89,7 +89,7 @@ void rule(Particle* p1, int amountOfP1, Particle* p2, int amountOfP2, float g) {
         if (particleCopy.x <= 0 || particleCopy.x >= SCREEN_WIDTH) {
             particleCopy.xv *=-1;
         }
-        if (particleCopy.y <= 0 || particleCopy.x >= SCREEN_HEIGHT) {
+        if (particleCopy.y <= 0 || particleCopy.y >= SCREEN_HEIGHT) {
             particleCopy.yv *=-1;
         }
 
@@ -120,10 +120,10 @@ int main()
     int indexBLUE = 0;
     int indexGREEN = 0;
 
-    indexRED = createGroup(400,RED,ParticlesRED,indexRED);
-    indexWHITE = createGroup(400,WHITE,ParticlesWHITE,indexWHITE);
-    indexBLUE = createGroup(400,BLUE,ParticlesBLUE,indexBLUE);
-    indexGREEN = createGroup(400,GREEN,ParticlesGREEN,indexGREEN);
+    indexRED = createGroup(30,RED,ParticlesRED,indexRED);
+    indexWHITE = createGroup(30,WHITE,ParticlesWHITE,indexWHITE);
+    indexBLUE = createGroup(30,BLUE,ParticlesBLUE,indexBLUE);
+    indexGREEN = createGroup(30,GREEN,ParticlesGREEN,indexGREEN);
 
 
     /* make rules */
