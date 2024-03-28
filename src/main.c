@@ -7,12 +7,14 @@
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
 #define RADIUS 1
-#define AMOUNT 10000
-#define VELOCITYFACTOR 0.008
-#define ACCERATIONFACTOR 1
+#define AMOUNT 2000
+#define VELOCITYFACTOR 0.1
+#define FRICTION 0
+#define WALLBOUNCE 1
 #define MAXSIZE 1
-#define MINDISTANCE 0.6
-#define FORCEDISTANCE RADIUS*40
+#define MAXSPEED 30
+#define MINDISTANCE 0.3
+#define FORCEDISTANCE RADIUS*SCREEN_WIDTH*SCREEN_HEIGHT*0.0002
 
 typedef struct {
     float x;
@@ -28,7 +30,7 @@ void ViewParticle(Particle p) {
 }
 
 void DrawParticle(Particle p) {
-    DrawCircle(p.x, p.y, p.mass, p.colour);
+    DrawCircle(p.x, p.y, p.mass*2, p.colour);
 }
 
 Particle InitParticle(Color colour) {
@@ -73,24 +75,27 @@ void rule(Particle* p1, int amountOfP1, Particle* p2, int amountOfP2, float g) {
                     F = -1*particle1.mass*particle2.mass/distance;
                 }
 
-                fx += F * dx;
-                fy += F * dy;
+
+                fx += (F - particle1.xv*FRICTION) * dx;
+                fy += (F - particle1.yv*FRICTION) * dy;
+                particle1.xv = (particle1.xv + fx)*VELOCITYFACTOR;
+                particle1.yv = (particle1.yv + fy)*VELOCITYFACTOR;
             }
 
         }
 
         Particle particleCopy = {particle1.x,particle1.y,particle1.xv,particle1.yv,particle1.mass,particle1.colour};
 
-        particleCopy.xv += fx*ACCERATIONFACTOR;
-        particleCopy.yv += fy*ACCERATIONFACTOR;
-        particleCopy.x += particleCopy.xv*VELOCITYFACTOR;
-        particleCopy.y += particleCopy.yv*VELOCITYFACTOR;
+        particleCopy.x += particleCopy.xv;
+        particleCopy.y += particleCopy.yv;
 
         if (particleCopy.x <= 0 || particleCopy.x >= SCREEN_WIDTH) {
-            particleCopy.xv *=-1;
+            particleCopy.xv *= -1;
+            particleCopy.xv *= WALLBOUNCE;
         }
         if (particleCopy.y <= 0 || particleCopy.y >= SCREEN_HEIGHT) {
-            particleCopy.yv *=-1;
+            particleCopy.yv *= -1;
+            particleCopy.yv *= WALLBOUNCE;;
         }
 
         p1[i] = particleCopy;
@@ -120,10 +125,10 @@ int main()
     int indexBLUE = 0;
     int indexGREEN = 0;
 
-    indexRED = createGroup(30,RED,ParticlesRED,indexRED);
-    indexWHITE = createGroup(30,WHITE,ParticlesWHITE,indexWHITE);
-    indexBLUE = createGroup(30,BLUE,ParticlesBLUE,indexBLUE);
-    indexGREEN = createGroup(30,GREEN,ParticlesGREEN,indexGREEN);
+    indexRED = createGroup(AMOUNT/4,RED,ParticlesRED,indexRED);
+    indexWHITE = createGroup(AMOUNT/4,WHITE,ParticlesWHITE,indexWHITE);
+    indexBLUE = createGroup(AMOUNT/4,BLUE,ParticlesBLUE,indexBLUE);
+    indexGREEN = createGroup(AMOUNT/4,GREEN,ParticlesGREEN,indexGREEN);
 
 
     /* make rules */
@@ -182,6 +187,9 @@ int main()
 
 
 
+  //      rule(ParticlesRED,indexRED,ParticlesRED,indexRED,-1);
+    //    rule(ParticlesRED,indexRED,ParticlesWHITE,indexWHITE,-0.1);
+      //  rule(ParticlesWHITE,indexWHITE,ParticlesRED,indexRED,1);
         /* RED */
         rule(ParticlesRED,indexRED,ParticlesRED,indexRED,g*FactorREDtoRED);
         rule(ParticlesRED,indexRED,ParticlesWHITE,indexWHITE,g*FactorREDtoWHITE);
