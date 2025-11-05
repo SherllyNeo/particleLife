@@ -25,6 +25,11 @@ typedef struct {
     Color colour;
 } Particle;
 
+
+float sign(float x) {
+    return ((x > 0) - (x < 0));
+}
+
 void ViewParticle(Particle p) {
     printf("x: %f, y: %f, xv: %f, yv: %f, mass: %f\n",p.x,p.y,p.xv,p.yv,p.mass);
 }
@@ -80,6 +85,14 @@ void rule(Particle* p1, int amountOfP1, Particle* p2, int amountOfP2, float g) {
                 fy += (F - particle1.yv*FRICTION) * dy;
                 particle1.xv = (particle1.xv + fx)*VELOCITYFACTOR;
                 particle1.yv = (particle1.yv + fy)*VELOCITYFACTOR;
+
+                
+                if (fabs(particle1.xv) > MAXSPEED) {
+                    particle1.xv = MAXSPEED*sign(particle1.xv);
+                }
+                if (fabs(particle1.yv) > MAXSPEED) {
+                    particle1.yv = MAXSPEED*sign(particle1.xv);
+                }
             }
 
         }
