@@ -1,20 +1,19 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <raylib.h>
 #include <math.h>
 #include <time.h>
-#include <strings.h>
+
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080
-#define RADIUS 5
 #define AMOUNT 2500
-#define VELOCITYFACTOR 0.1
-#define FRICTION 0
-#define WALLBOUNCE 1
+#define VELOCITYFACTOR 0.5f
+#define FRICTION 0.98f
+#define MAXSPEED 8.0f
+#define MINDISTANCE 10.0f
+#define FORCEDISTANCE 150.0f
 #define MAXSIZE 1
-#define MAXSPEED 30
-#define MINDISTANCE 1
-#define FORCEDISTANCE RADIUS*SCREEN_WIDTH*SCREEN_HEIGHT*0.00004
 
 typedef struct {
     float x;
@@ -25,256 +24,124 @@ typedef struct {
     Color colour;
 } Particle;
 
+float sign(float x) { return (x > 0) - (x < 0); }
 
-float sign(float x) {
-    return ((x > 0) - (x < 0));
-}
-
-void ViewParticle(Particle p) {
-    printf("x: %f, y: %f, xv: %f, yv: %f, mass: %f\n",p.x,p.y,p.xv,p.yv,p.mass);
-}
-
-void DrawParticle(Particle p) {
-    DrawCircle(p.x, p.y, p.mass*3, p.colour);
+float randRange(float min, float max) {
+    return min + ((float)rand() / RAND_MAX) * (max - min);
 }
 
 Particle InitParticle(Color colour) {
-    Particle p = {(float)((rand() % SCREEN_WIDTH/4) + SCREEN_WIDTH/2),(float)((rand() % SCREEN_HEIGHT/4) + SCREEN_HEIGHT/2),0,0,(rand() % MAXSIZE) + 1,colour};
+    Particle p = {
+        (float)((rand() % (SCREEN_WIDTH / 2)) + SCREEN_WIDTH / 4),
+        (float)((rand() % (SCREEN_HEIGHT / 2)) + SCREEN_HEIGHT / 4),
+        0, 0,
+        (rand() % MAXSIZE) + 1,
+        colour
+    };
     return p;
 }
 
-int createGroup(int number,Color colour,Particle* Particles, int index) {
-    for (int i = 0;i<number;i++) {
-     Particle p = InitParticle(colour);
-     Particles[index++] = p;
-    }
+int createGroup(int number, Color colour, Particle *Particles, int index) {
+    for (int i = 0; i < number; i++) Particles[index++] = InitParticle(colour);
     return index;
-
 }
 
-void DrawParticles(Particle* Particles, int index) {
-    for (int i = 0; i<index;i++) {
-        Particle p = Particles[i];
-        DrawParticle(p);
-    }
+void DrawParticles(Particle *Particles, int index) {
+    for (int i = 0; i < index; i++)
+        DrawCircle(Particles[i].x, Particles[i].y, Particles[i].mass * 3, Particles[i].colour);
 }
 
-
-
-void rule(Particle* p1, int amountOfP1, Particle* p2, int amountOfP2, float g) {
-    for (int i = 0; i<amountOfP1; i++) {
-        Particle particle1 = p1[i];
-        float fx = 0.0;
-        float fy = 0.0;
-        for (int j = 0; j<amountOfP2; j++) {
-            Particle particle2 = p2[j];
-            float dx = particle1.x - particle2.x;
-            float dy = particle1.y - particle2.y;
-            float distance = (float)sqrt(dx*dx + dy*dy);
-
-
-            if (distance > MINDISTANCE && distance < FORCEDISTANCE) {
-                //float F = g*1/pow(distance,2);
-                float F = g*particle1.mass*particle2.mass/distance;
-                if (distance <= MINDISTANCE) {
-                    F = -g*particle1.mass*particle2.mass/distance;
-                }
-
-
-                fx += (F - particle1.xv*FRICTION) * dx;
-                fy += (F - particle1.yv*FRICTION) * dy;
-                particle1.xv = (particle1.xv + fx)*VELOCITYFACTOR;
-                particle1.yv = (particle1.yv + fy)*VELOCITYFACTOR;
-
-                
-                if (fabs(particle1.xv) > MAXSPEED) {
-                    particle1.xv = MAXSPEED*sign(particle1.xv);
-                }
-                if (fabs(particle1.yv) > MAXSPEED) {
-                    particle1.yv = MAXSPEED*sign(particle1.xv);
-                }
+void rule(Particle *p1, int n1, Particle *p2, int n2, float g) {
+    for (int i = 0; i < n1; i++) {
+        float fx = 0, fy = 0;
+        for (int j = 0; j < n2; j++) {
+            float dx = p2[j].x - p1[i].x;
+            float dy = p2[j].y - p1[i].y;
+            float dist = sqrtf(dx * dx + dy * dy);
+            if (dist > 0 && dist < FORCEDISTANCE) {
+                float force = g * p2[j].mass / dist;
+                if (dist < MINDISTANCE) force *= -1.5f;
+                fx += force * (dx / dist);
+                fy += force * (dy / dist);
             }
-
         }
-
-        Particle particleCopy = {particle1.x,particle1.y,particle1.xv,particle1.yv,particle1.mass,particle1.colour};
-
-        particleCopy.x += particleCopy.xv;
-        particleCopy.y += particleCopy.yv;
-
-//        if (particleCopy.x <= 0 || particleCopy.x >= SCREEN_WIDTH) {
-//            particleCopy.xv *= -1;
-//            particleCopy.xv *= WALLBOUNCE;
-//        }
-//        if (particleCopy.y <= 0 || particleCopy.y >= SCREEN_HEIGHT) {
-//            particleCopy.yv *= -1;
-//            particleCopy.yv *= WALLBOUNCE;;
-//
-        particleCopy.x = (((int)particleCopy.x+SCREEN_WIDTH) % SCREEN_WIDTH);
-        particleCopy.y = (((int)particleCopy.y+SCREEN_HEIGHT) % SCREEN_HEIGHT);
-
-
-
-        p1[i] = particleCopy;
+        p1[i].xv += fx * VELOCITYFACTOR;
+        p1[i].yv += fy * VELOCITYFACTOR;
+        p1[i].xv *= FRICTION;
+        p1[i].yv *= FRICTION;
+        if (fabsf(p1[i].xv) > MAXSPEED) p1[i].xv = sign(p1[i].xv) * MAXSPEED;
+        if (fabsf(p1[i].yv) > MAXSPEED) p1[i].yv = sign(p1[i].yv) * MAXSPEED;
+        p1[i].x += p1[i].xv;
+        p1[i].y += p1[i].yv;
+        if (p1[i].x < 0) p1[i].x += SCREEN_WIDTH;
+        if (p1[i].x >= SCREEN_WIDTH) p1[i].x -= SCREEN_WIDTH;
+        if (p1[i].y < 0) p1[i].y += SCREEN_HEIGHT;
+        if (p1[i].y >= SCREEN_HEIGHT) p1[i].y -= SCREEN_HEIGHT;
     }
-
 }
 
-
-
-
-
-int main()
-{
+int main() {
     srand(time(NULL));
-    //    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Smooth Random Particle Simulation");
+    SetTargetFPS(120);
 
-    /* init state */
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Circles"); SetTargetFPS(130);
-    SetTargetFPS(100);
+    Particle red[AMOUNT], white[AMOUNT], blue[AMOUNT], green[AMOUNT], yellow[AMOUNT];
+    int nR = createGroup(AMOUNT / 5, RED, red, 0);
+    int nW = createGroup(AMOUNT / 5, WHITE, white, 0);
+    int nB = createGroup(AMOUNT / 5, BLUE, blue, 0);
+    int nG = createGroup(AMOUNT / 5, GREEN, green, 0);
+    int nY = createGroup(AMOUNT / 5, YELLOW, yellow, 0);
 
-    Particle ParticlesRED[AMOUNT];
-    Particle ParticlesWHITE[AMOUNT];
-    Particle ParticlesBLUE[AMOUNT];
-    Particle ParticlesGREEN[AMOUNT];
-    Particle ParticlesYELLOW[AMOUNT];
-    int indexRED = 0;
-    int indexWHITE = 0;
-    int indexBLUE = 0;
-    int indexGREEN = 0;
-    int indexYELLOW = 0;
-
-    indexRED = createGroup(AMOUNT/5,RED,ParticlesRED,indexRED);
-    indexWHITE = createGroup(AMOUNT/5,WHITE,ParticlesWHITE,indexWHITE);
-    indexBLUE = createGroup(AMOUNT/5,BLUE,ParticlesBLUE,indexBLUE);
-    indexGREEN = createGroup(AMOUNT/5,GREEN,ParticlesGREEN,indexGREEN);
-    indexYELLOW = createGroup(AMOUNT/5,YELLOW,ParticlesYELLOW,indexYELLOW);
-
-
-    /* make rules */
-    
-
-
-
-    float FactorREDtoRED = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorREDtoWHITE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorREDtoBLUE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorREDtoGREEN = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorREDtoYELLOW = (float)rand()/(float)(RAND_MAX/2) - 1;
-
-    float FactorWHITEtoWHITE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorWHITEtoRED = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorWHITEtoBLUE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorWHITEtoGREEN = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorWHITEtoYELLOW = (float)rand()/(float)(RAND_MAX/2) - 1;
-
-    float FactorBLUEtoBLUE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorBLUEtoWHITE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorBLUEtoRED = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorBLUEtoGREEN = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorBLUEtoYELLOW = (float)rand()/(float)(RAND_MAX/2) - 1;
-
-    float FactorGREENtoGREEN = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorGREENtoBLUE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorGREENtoWHITE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorGREENtoRED = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorGREENtoYELLOW = (float)rand()/(float)(RAND_MAX/2) - 1;
-
-    float FactorYELLOWtoYELLOW = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorYELLOWtoGREEN = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorYELLOWtoBLUE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorYELLOWtoWHITE = (float)rand()/(float)(RAND_MAX/2) - 1;
-    float FactorYELLOWtoRED = (float)rand()/(float)(RAND_MAX/2) - 1;
-
-
-    printf("Red to Red: %f\n",FactorREDtoRED);
-    printf("Red to Blue: %f\n",FactorREDtoBLUE);
-    printf("Red to WHITE: %f\n",FactorREDtoWHITE);
-    printf("Red to GREEN: %f\n",FactorREDtoGREEN);
-    printf("Red to Yellow: %f\n",FactorREDtoYELLOW);
-
-
-    printf("White to White: %f\n",FactorWHITEtoWHITE);
-    printf("White to Red: %f\n",FactorWHITEtoRED);
-    printf("White to Blue: %f\n",FactorWHITEtoBLUE);
-    printf("White to Green: %f\n",FactorWHITEtoGREEN);
-    printf("White to Yellow: %f\n",FactorWHITEtoYELLOW);
-
-    printf("Blue to Blue: %f\n",FactorBLUEtoBLUE);
-    printf("Blue to RED: %f\n",FactorBLUEtoRED);
-    printf("Blue to WHITE: %f\n",FactorBLUEtoWHITE);
-    printf("Blue to GREEN: %f\n",FactorBLUEtoGREEN);
-    printf("Blue to Yellow: %f\n",FactorBLUEtoYELLOW);
-
-
-    printf("Green to Green: %f\n",FactorGREENtoGREEN);
-    printf("Green to White: %f\n",FactorGREENtoWHITE);
-    printf("Green to Blue: %f\n",FactorGREENtoBLUE);
-    printf("Green to Red: %f\n",FactorGREENtoRED);
-    printf("Green to Yellow: %f\n",FactorGREENtoYELLOW);
-
-    printf("Yellow to Yellow: %f\n",FactorREDtoYELLOW);
-    printf("Yellow to Green: %f\n",FactorYELLOWtoGREEN);
-    printf("Yellow to White: %f\n",FactorYELLOWtoWHITE);
-    printf("Yellow to Blue: %f\n",FactorYELLOWtoBLUE);
-    printf("Yellow to Red: %f\n",FactorYELLOWtoRED);
-
+    float rules[5][5];
+    for (int i = 0; i < 5; i++)
+        for (int j = 0; j < 5; j++)
+            rules[i][j] = randRange(-1.0f, 1.0f);
 
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(BLACK);
-        float g = -1.0;
+        float g = 0.5f;
 
+        rule(red, nR, red, nR, g * rules[0][0]);
+        rule(red, nR, white, nW, g * rules[0][1]);
+        rule(red, nR, blue, nB, g * rules[0][2]);
+        rule(red, nR, green, nG, g * rules[0][3]);
+        rule(red, nR, yellow, nY, g * rules[0][4]);
 
+        rule(white, nW, red, nR, g * rules[1][0]);
+        rule(white, nW, white, nW, g * rules[1][1]);
+        rule(white, nW, blue, nB, g * rules[1][2]);
+        rule(white, nW, green, nG, g * rules[1][3]);
+        rule(white, nW, yellow, nY, g * rules[1][4]);
 
-        /* RED */
-        rule(ParticlesRED,indexRED,ParticlesRED,indexRED,g*FactorREDtoRED);
-        rule(ParticlesRED,indexRED,ParticlesWHITE,indexWHITE,g*FactorREDtoWHITE);
-        rule(ParticlesRED,indexRED,ParticlesBLUE,indexBLUE,g*FactorREDtoBLUE);
-        rule(ParticlesRED,indexRED,ParticlesGREEN,indexGREEN,g*FactorREDtoGREEN);
-        rule(ParticlesRED,indexRED,ParticlesYELLOW,indexYELLOW,g*FactorREDtoYELLOW);
+        rule(blue, nB, red, nR, g * rules[2][0]);
+        rule(blue, nB, white, nW, g * rules[2][1]);
+        rule(blue, nB, blue, nB, g * rules[2][2]);
+        rule(blue, nB, green, nG, g * rules[2][3]);
+        rule(blue, nB, yellow, nY, g * rules[2][4]);
 
-        /* WHITE */
-        rule(ParticlesWHITE,indexWHITE,ParticlesWHITE,indexWHITE,g*FactorWHITEtoWHITE);
-        rule(ParticlesWHITE,indexWHITE,ParticlesRED,indexRED,g*FactorWHITEtoRED);
-        rule(ParticlesWHITE,indexWHITE,ParticlesGREEN,indexGREEN,g*FactorWHITEtoGREEN);
-        rule(ParticlesWHITE,indexWHITE,ParticlesBLUE,indexBLUE,g*FactorWHITEtoBLUE);
-        rule(ParticlesWHITE,indexWHITE,ParticlesYELLOW,indexYELLOW,g*FactorWHITEtoYELLOW);
-        
-        /* BLUE */
-        rule(ParticlesBLUE,indexBLUE,ParticlesBLUE,indexBLUE,g*FactorBLUEtoBLUE);
-        rule(ParticlesBLUE,indexBLUE,ParticlesWHITE,indexWHITE,g*FactorBLUEtoWHITE);
-        rule(ParticlesBLUE,indexBLUE,ParticlesGREEN,indexGREEN,g*FactorBLUEtoGREEN);
-        rule(ParticlesBLUE,indexBLUE,ParticlesRED,indexRED,g*FactorBLUEtoRED);
-        rule(ParticlesBLUE,indexBLUE,ParticlesYELLOW,indexYELLOW,g*FactorBLUEtoYELLOW);
+        rule(green, nG, red, nR, g * rules[3][0]);
+        rule(green, nG, white, nW, g * rules[3][1]);
+        rule(green, nG, blue, nB, g * rules[3][2]);
+        rule(green, nG, green, nG, g * rules[3][3]);
+        rule(green, nG, yellow, nY, g * rules[3][4]);
 
-        /* GREEN */
-        rule(ParticlesGREEN,indexGREEN,ParticlesGREEN,indexGREEN,g*FactorGREENtoGREEN);
-        rule(ParticlesGREEN,indexGREEN,ParticlesWHITE,indexWHITE,g*FactorGREENtoWHITE);
-        rule(ParticlesGREEN,indexGREEN,ParticlesBLUE,indexBLUE,g*FactorGREENtoBLUE);
-        rule(ParticlesGREEN,indexGREEN,ParticlesRED,indexRED,g*FactorGREENtoRED);
-        rule(ParticlesGREEN,indexGREEN,ParticlesYELLOW,indexYELLOW,g*FactorGREENtoYELLOW);
+        rule(yellow, nY, red, nR, g * rules[4][0]);
+        rule(yellow, nY, white, nW, g * rules[4][1]);
+        rule(yellow, nY, blue, nB, g * rules[4][2]);
+        rule(yellow, nY, green, nG, g * rules[4][3]);
+        rule(yellow, nY, yellow, nY, g * rules[4][4]);
 
-        /* YELLOW */
-        rule(ParticlesYELLOW,indexYELLOW,ParticlesYELLOW,indexYELLOW,g*FactorYELLOWtoYELLOW);
-        rule(ParticlesYELLOW,indexYELLOW,ParticlesWHITE,indexWHITE,g*FactorYELLOWtoWHITE);
-        rule(ParticlesYELLOW,indexYELLOW,ParticlesBLUE,indexBLUE,g*FactorYELLOWtoBLUE);
-        rule(ParticlesYELLOW,indexYELLOW,ParticlesRED,indexRED,g*FactorYELLOWtoRED);
-        rule(ParticlesYELLOW,indexYELLOW,ParticlesGREEN,indexGREEN,g*FactorYELLOWtoGREEN);
-
-
-
-        DrawParticles(ParticlesRED,indexRED);
-        DrawParticles(ParticlesWHITE,indexWHITE);
-        DrawParticles(ParticlesGREEN,indexGREEN);
-        DrawParticles(ParticlesBLUE,indexBLUE);
-        DrawParticles(ParticlesYELLOW,indexYELLOW);
+        DrawParticles(red, nR);
+        DrawParticles(white, nW);
+        DrawParticles(blue, nB);
+        DrawParticles(green, nG);
+        DrawParticles(yellow, nY);
 
         EndDrawing();
-        }
+    }
 
     CloseWindow();
-
-
-    return EXIT_SUCCESS;
+    return 0;
 }
+
