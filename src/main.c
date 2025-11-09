@@ -53,36 +53,52 @@ void DrawParticles(Particle *Particles, int index) {
 
 void rule(Particle *p1, int n1, Particle *p2, int n2, float g) {
     for (int i = 0; i < n1; i++) {
+        Particle particle1 = p1[i];
         float fx = 0, fy = 0;
+
         for (int j = 0; j < n2; j++) {
-            float dx = p2[j].x - p1[i].x;
-            float dy = p2[j].y - p1[i].y;
+            Particle particle2 = p2[j];
+            float dx = particle2.x - particle1.x;
+            float dy = particle2.y - particle1.y;
             float dist = sqrtf(dx * dx + dy * dy);
             if (dist > 0 && dist < FORCEDISTANCE) {
-                float force = g * p2[j].mass / dist;
+                float force = g * particle2.mass / dist;
                 if (dist < MINDISTANCE) force *= -1.5f;
                 fx += force * (dx / dist);
                 fy += force * (dy / dist);
             }
         }
-        p1[i].xv += fx * VELOCITYFACTOR;
-        p1[i].yv += fy * VELOCITYFACTOR;
-        p1[i].xv *= FRICTION;
-        p1[i].yv *= FRICTION;
-        if (fabsf(p1[i].xv) > MAXSPEED) p1[i].xv = sign(p1[i].xv) * MAXSPEED;
-        if (fabsf(p1[i].yv) > MAXSPEED) p1[i].yv = sign(p1[i].yv) * MAXSPEED;
-        p1[i].x += p1[i].xv;
-        p1[i].y += p1[i].yv;
-        if (p1[i].x < 0) p1[i].x += SCREEN_WIDTH;
-        if (p1[i].x >= SCREEN_WIDTH) p1[i].x -= SCREEN_WIDTH;
-        if (p1[i].y < 0) p1[i].y += SCREEN_HEIGHT;
-        if (p1[i].y >= SCREEN_HEIGHT) p1[i].y -= SCREEN_HEIGHT;
+
+        particle1.xv += fx * VELOCITYFACTOR;
+        particle1.yv += fy * VELOCITYFACTOR;
+
+        particle1.xv *= FRICTION;
+        particle1.yv *= FRICTION;
+
+        if (fabsf(particle1.xv) > MAXSPEED) particle1.xv = sign(particle1.xv) * MAXSPEED;
+        if (fabsf(particle1.yv) > MAXSPEED) particle1.yv = sign(particle1.yv) * MAXSPEED;
+
+        Particle updated = {
+            particle1.x + particle1.xv,
+            particle1.y + particle1.yv,
+            particle1.xv,
+            particle1.yv,
+            particle1.mass,
+            particle1.colour
+        };
+
+        if (updated.x < 0) updated.x += SCREEN_WIDTH;
+        if (updated.x >= SCREEN_WIDTH) updated.x -= SCREEN_WIDTH;
+        if (updated.y < 0) updated.y += SCREEN_HEIGHT;
+        if (updated.y >= SCREEN_HEIGHT) updated.y -= SCREEN_HEIGHT;
+
+        p1[i] = updated;
     }
 }
 
 int main() {
     srand(time(NULL));
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Smooth Random Particle Simulation");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Smooth Particle Copy Update");
     SetTargetFPS(120);
 
     Particle red[AMOUNT], white[AMOUNT], blue[AMOUNT], green[AMOUNT], yellow[AMOUNT];
