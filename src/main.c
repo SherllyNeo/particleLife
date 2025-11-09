@@ -32,8 +32,8 @@ float randRange(float min, float max) {
 
 Particle InitParticle(Color colour) {
     Particle p = {
-        (float)((rand() % (SCREEN_WIDTH / 2)) + SCREEN_WIDTH / 4),
-        (float)((rand() % (SCREEN_HEIGHT / 2)) + SCREEN_HEIGHT / 4),
+        (float)(rand() % SCREEN_WIDTH),
+        (float)(rand() % SCREEN_HEIGHT),
         0, 0,
         (rand() % MAXSIZE) + 1,
         colour
